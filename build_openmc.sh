@@ -25,30 +25,30 @@ fi
 ####################################################################
 
 # HDF5 and CMake dependencies
-module load spack
-module load cmake
-module load hdf5
+# module load spack
+# module load cmake
+# module load hdf5
 
 # Note - If you have manually compiled HDF5, set the HDF5_ROOT
 # environment variable to your install location
 
 # Compiler dependency (llvm, oneapi)
 # On the Argonne JLSE cluster, use "module load llvm/master-nightly"
-module load llvm
+# module load llvm
 
 # GPU target/compiler selection (full list in OpenMC's main directory
 # CmakePrests.json file at:
 # https://github.com/exasmr/openmc/blob/openmp-target-offload/CMakePresets.json)
 # (some options are llvm_a100, llvm_v100, llvm_mi100, llvm_mi250x, spirv_aot)
 # llvm_native will attempt to build for any GPUs detected on the node
-OPENMC_TARGET=llvm_native
+OPENMC_TARGET=llvm_radeon_7800xt
 
 # If you are compiling for NVIDIA or Intel, you may want to enable
 # use of a vendor library to accelerate particle sorting.
 # (Set to on/off).
 OPENMC_NVIDIA_SORT=off
 OPENMC_INTEL_SORT=off
-OPENMC_AMD_SORT=off
+OPENMC_AMD_SORT=on
 
 # Enable compiler debugging line information (-gline-tables-only)
 OPENMC_DEBUG_LINE_INFO=off
@@ -144,7 +144,9 @@ cmake_cmd="cmake                         \
 -Ddebug=${OPENMC_DEBUG_LINE_INFO}        \
 -Dcuda_thrust_sort=${OPENMC_NVIDIA_SORT} \
 -Dsycl_sort=${OPENMC_INTEL_SORT}         \
--Dhip_thrust_sort=${OPENMC_AMD_SORT}"
+-Dhip_thrust_sort=${OPENMC_AMD_SORT}     \
+-DFMT_USE_SUBMODULE=OFF                  \
+-DCMAKE_CXX_FLAGS=\"-DFMT_LOCALE=0\""
 
 # Check if OPENMC_CXX_FLAGS is set and not empty
 if [ ! -z "${OPENMC_CXX_FLAGS}" ]; then
@@ -159,6 +161,12 @@ if [ ! -z "${OPENMC_LD_FLAGS}" ]; then
     echo -e "\033[31mWARNING: OPENMC_LD_FLAGS has been set. This overwrites CMakePresets.json commands for ${OPENMC_TARGET}, so you will need to manually include them in your redefinition.\033[0m "
     cmake_cmd+=" -DCMAKE_EXE_LINKER_FLAGS=\"${OPENMC_LD_FLAGS}\" -DCMAKE_MODULE_LINKER_FLAGS=\"${OPENMC_LD_FLAGS}\""
 fi
+
+cmake_cmd+=" \
+  -DOPENMC_DEVICE=ON \
+  -DOPENMC_USE_HIP=ON \
+  -DCMAKE_C_COMPILER=/opt/rocm/llvm/bin/clang \
+  -DCMAKE_CXX_COMPILER=/opt/rocm/llvm/bin/clang++"
 
 # Finally, run the cmake command with optionally added flags
 eval $cmake_cmd ..
