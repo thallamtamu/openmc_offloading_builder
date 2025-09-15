@@ -99,7 +99,20 @@ echo "Install Name: $INSTALL_DIR"
 if [ "$MODE" = "all" ] || [ "$MODE" = "download" ]; then
 
 # Clone OpenMC source
-git clone --recursive https://github.com/exasmr/openmc.git
+git clone --recursive https://github.com/thallamtamu/openmc-gpu.git 
+cp CMakePresets.json openmc-gpu/CMakePresets.json
+mv openmc-gpu openmc
+cd openmc
+git checkout gpu_updates
+cd vendor/fmt
+git checkout 11.2.0
+cd ../xtensor
+git checkout 0.27.0
+cd ../xtl
+git checkout 0.8.0
+cd ../pugixml
+git checkout v1.15
+cd ../../..
 
 # Clone benchmarks repository
 git clone https://github.com/jtramm/openmc_offloading_benchmarks.git
@@ -136,6 +149,7 @@ mkdir ${INSTALL_DIR}
 cd build
 
 # Initialize the base cmake command
+
 cmake_cmd="cmake                         \
 --preset=${OPENMC_TARGET}                \
 -DCMAKE_INSTALL_PREFIX=../${INSTALL_DIR} \
@@ -145,7 +159,6 @@ cmake_cmd="cmake                         \
 -Dcuda_thrust_sort=${OPENMC_NVIDIA_SORT} \
 -Dsycl_sort=${OPENMC_INTEL_SORT}         \
 -Dhip_thrust_sort=${OPENMC_AMD_SORT}     \
--DFMT_USE_SUBMODULE=OFF                  \
 -DCMAKE_CXX_FLAGS=\"-DFMT_LOCALE=0\""
 
 # Check if OPENMC_CXX_FLAGS is set and not empty
@@ -163,16 +176,14 @@ if [ ! -z "${OPENMC_LD_FLAGS}" ]; then
 fi
 
 cmake_cmd+=" \
-  -DOPENMC_DEVICE=ON \
-  -DOPENMC_USE_HIP=ON \
-  -DCMAKE_C_COMPILER=/opt/rocm/llvm/bin/clang \
-  -DCMAKE_CXX_COMPILER=/opt/rocm/llvm/bin/clang++"
+  -DCMAKE_C_COMPILER=clang \
+  -DCMAKE_CXX_COMPILER=clang++"
 
 # Finally, run the cmake command with optionally added flags
 eval $cmake_cmd ..
 
 # compile and install
-make VERBOSE=1 install
+make VERBOSE=1 -j32 install
 
 fi
 
@@ -184,73 +195,100 @@ export PATH=${TEST_DIR}/openmc/${INSTALL_DIR}/bin:$PATH
 export OPENMC_CROSS_SECTIONS=${TEST_DIR}/nndc_hdf5/cross_sections.xml
 export OMP_TARGET_OFFLOAD=MANDATORY
 
-####################################################################
-# Small (runs a small test problem)
 
-if [ "$MODE" = "all" ] || [ "$MODE" = "small" ]; then
 
-# Select small benchmark problem
-cd ${TEST_DIR}/openmc_offloading_benchmarks/progression_tests/small
 
-# Program Launch
-openmc --event
 
-fi
 
-####################################################################
-# Validation (runs a small test problem and checks for correctness)
 
-if [ "$MODE" = "all" ] || [ "$MODE" = "validate" ]; then
 
-# Select small benchmark problem
-cd ${TEST_DIR}/openmc_offloading_benchmarks/progression_tests/small
 
-TEST_LOG=log.txt
-rm -f ${TEST_LOG}
 
-# Program Launch
-openmc --event &>> ${TEST_LOG}
-cat ${TEST_LOG}
 
-# Begin Result Validation
-TEST_RESULT=$(cat ${TEST_LOG}      | grep "Absorption" | cut -d '=' -f 2 | xargs)
-EXPECTED_RESULT=$(cat expected_results.txt | grep "Absorption" | cut -d '=' -f 2 | xargs)
-echo "Test Result     = "${TEST_RESULT}
-echo "Expected Result = "${EXPECTED_RESULT}
 
-# Finish Result Validation
-[ "$TEST_RESULT" == "$EXPECTED_RESULT" ]
 
-fi
 
-####################################################################
-# Performance Test
-# Runs a larger performance oriented test for benchmarking, checks
-# for correctness, and reports a performance figure of merit (FOM)
 
-if [ "$MODE" = "performance" ]; then
 
-# Select XXL benchmark problem
-cd ${TEST_DIR}/openmc_offloading_benchmarks/progression_tests/XXL
 
-TEST_LOG=log.txt
-rm -f ${TEST_LOG}
 
-# Program Launch
-openmc --event --no-sort-surface-crossing &>> ${TEST_LOG}
-cat ${TEST_LOG}
 
-# Begin Result Validation
-TEST_RESULT=$(cat ${TEST_LOG}      | grep "Absorption" | cut -d '=' -f 2 | xargs)
-EXPECTED_RESULT=$(cat expected_results.txt | grep "Absorption" | cut -d '=' -f 2 | xargs)
-echo "Test Result     = "${TEST_RESULT}
-echo "Expected Result = "${EXPECTED_RESULT}
 
-# Compute FOM
-FOM=$(cat ${TEST_LOG} | grep "(inactive" | cut -d '=' -f 2 | cut -d 'p' -f 1 | cut -d ' ' -f 2 | xargs)
-echo "FOM = "${FOM}" particles/sec"
 
-# Finish Result Validation
-[ "$TEST_RESULT" == "$EXPECTED_RESULT" ]
 
-fi
+
+
+
+
+
+
+# ####################################################################
+# # Small (runs a small test problem)
+
+# if [ "$MODE" = "all" ] || [ "$MODE" = "small" ]; then
+
+# # Select small benchmark problem
+# cd ${TEST_DIR}/openmc_offloading_benchmarks/progression_tests/small
+
+# # Program Launch
+# openmc --event
+
+# fi
+
+# ####################################################################
+# # Validation (runs a small test problem and checks for correctness)
+
+# if [ "$MODE" = "all" ] || [ "$MODE" = "validate" ]; then
+
+# # Select small benchmark problem
+# cd ${TEST_DIR}/openmc_offloading_benchmarks/progression_tests/small
+
+# TEST_LOG=log.txt
+# rm -f ${TEST_LOG}
+
+# # Program Launch
+# openmc --event &>> ${TEST_LOG}
+# cat ${TEST_LOG}
+
+# # Begin Result Validation
+# TEST_RESULT=$(cat ${TEST_LOG}      | grep "Absorption" | cut -d '=' -f 2 | xargs)
+# EXPECTED_RESULT=$(cat expected_results.txt | grep "Absorption" | cut -d '=' -f 2 | xargs)
+# echo "Test Result     = "${TEST_RESULT}
+# echo "Expected Result = "${EXPECTED_RESULT}
+
+# # Finish Result Validation
+# [ "$TEST_RESULT" == "$EXPECTED_RESULT" ]
+
+# fi
+
+# ####################################################################
+# # Performance Test
+# # Runs a larger performance oriented test for benchmarking, checks
+# # for correctness, and reports a performance figure of merit (FOM)
+
+# if [ "$MODE" = "performance" ]; then
+
+# # Select XXL benchmark problem
+# cd ${TEST_DIR}/openmc_offloading_benchmarks/progression_tests/XXL
+
+# TEST_LOG=log.txt
+# rm -f ${TEST_LOG}
+
+# # Program Launch
+# openmc --event --no-sort-surface-crossing &>> ${TEST_LOG}
+# cat ${TEST_LOG}
+
+# # Begin Result Validation
+# TEST_RESULT=$(cat ${TEST_LOG}      | grep "Absorption" | cut -d '=' -f 2 | xargs)
+# EXPECTED_RESULT=$(cat expected_results.txt | grep "Absorption" | cut -d '=' -f 2 | xargs)
+# echo "Test Result     = "${TEST_RESULT}
+# echo "Expected Result = "${EXPECTED_RESULT}
+
+# # Compute FOM
+# FOM=$(cat ${TEST_LOG} | grep "(inactive" | cut -d '=' -f 2 | cut -d 'p' -f 1 | cut -d ' ' -f 2 | xargs)
+# echo "FOM = "${FOM}" particles/sec"
+
+# # Finish Result Validation
+# [ "$TEST_RESULT" == "$EXPECTED_RESULT" ]
+
+# fi

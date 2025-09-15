@@ -153,12 +153,15 @@
             }
         },
         {
-            "name": "llvm_radeon_7800xt",
-            "inherits": ["llvm"],
-            "displayName": "LLVM Clang Radeon 7800XT (ROCm)",
-            "environment": {
-                "PRESET_CXX_FLAGS": "-fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx1101"
-            }
+        "name": "llvm_radeon_7800xt",
+        "inherits": ["llvm"],
+        "displayName": "LLVM Clang Radeon 7800XT (ROCm)",
+        "environment": {
+            "PRESET_CXX_FLAGS": "-fopenmp -fopenmp-targets=amdgcn-amd-amdhsa -Xopenmp-target=amdgcn-amd-amdhsa -march=gfx1101"
+        },
+        "cacheVariables": {
+            "CMAKE_CXX_FLAGS": "$env{PRESET_CXX_FLAGS}"
+        }
         },
         {
             "name": "llvm_mi100_mpi",
